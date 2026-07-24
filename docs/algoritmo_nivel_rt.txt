@@ -1,0 +1,23 @@
+
+Primeira versão
+
+R7 <- DataIn
+R6 <- DataIn
+R5 <- DataIn
+R4 <- R7 + R6 
+R4 <- R4 + R5
+R4 <- R4 sl
+R4 <- R4 sl
+DataOut <- R4
+
+Tentando otimizar
+
+R7 <- DataIn
+R6 <- DataIn
+R5 <- DataIn, R4 <- R7 + R6(quando o clock bater,
+ eu deixo o R5 escutando o datain e o R4 escutando o ula_out )
+
+R4 <- R4 + R5
+R4 <- R4 sl
+R4 <- R4 sl
+DataOut <- R4
