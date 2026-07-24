@@ -1,0 +1,4 @@
+R7 = altura 
+R6= largura 
+R5 = comprimento 
+R4 = soma_final
