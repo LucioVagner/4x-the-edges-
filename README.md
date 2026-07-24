@@ -95,7 +95,7 @@ ASIC_CD2/
 ## ✅ Itens entregues
 
 - [x] Algoritmo em alto nível
-- [] Alocação dos registradores
+- [x] Alocação dos registradores
 - [] Algoritmo em termos de registradores
 - [] Diagrama de estados com as operações de transferência
 - [] Implementação em VHDL (bloco de controle + bloco operativo)
