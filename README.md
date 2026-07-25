@@ -4,7 +4,6 @@
   <img src="https://img.shields.io/badge/VHDL-93.6%25-purple?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Quartus%20II-13.0%20SP1-blue?style=for-the-badge&logo=intel&logoColor=white" />
   <img src="https://img.shields.io/badge/FPGA-Altera%20DE2%20%2F%20Cyclone%20II-orange?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/status-working-brightgreen?style=for-the-badge" />
   <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=for-the-badge" />
 </p>
 
