@@ -1,113 +1,99 @@
-# ASIC_CD2
+# 4x-the-edges 📦⚡
 
-Projeto de um **ASIC** (*Application-Specific Integrated Circuit*) desenvolvido para o Trabalho Prático 2 da disciplina **Circuitos Digitais II**— UFPel.
+<p align="center">
+  <img src="https://img.shields.io/badge/VHDL-93.6%25-purple?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Quartus%20II-13.0%20SP1-blue?style=for-the-badge&logo=intel&logoColor=white" />
+  <img src="https://img.shields.io/badge/FPGA-Altera%20DE2%20%2F%20Cyclone%20II-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/status-working-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=for-the-badge" />
+</p>
 
-> **Universidade Federal de Pelotas**
-> Centro de Desenvolvimento Tecnológico · Curso de Engenharia de Computação
-
+<p align="center">
+  <b>A finite-state machine that does 3rd-grade geometry in hardware.</b><br/>
+  Feed it three numbers, it hands you back <code>4 × (a + b + c)</code> — the total edge length of a rectangular box — computed cycle by cycle on real silicon logic.
+</p>
 
 ---
 
-## 📋 Descrição do problema
+## 🧠 The idea
 
-**Tema — Soma das arestas de um prisma retangular reto**
-
-> Leia as dimensões das arestas de um prisma retangular reto por meio da porta de entrada `DataIn`. Calcule o somatório de todas as suas arestas e apresente o resultado na porta de saída `DataOut`.
-
-Um prisma retangular possui 3 dimensões distintas (largura, altura e base), cada uma repetida 4 vezes em suas 12 arestas. Logo:
+A rectangular box has 12 edges: 4 of each dimension. So:
 
 ```
-somatorio = 4 × (largura + altura + base)
+sum_of_edges = 4 × (height + width + length)
 ```
 
----
+Trivial in software. The fun part here is doing it the **hardware way**: no CPU, no instructions — just a custom control unit (FSM) driving a custom datapath, register by register, clock edge by clock edge.
 
-## 🧠 Algoritmo em alto nível
+## 🔩 How it's built
 
-```
-programa {
-    funcao inicio() {
-        inteiro largura, altura, base
-        inteiro somatorio
+A classic **control unit + datapath** split:
 
-        escreva("Digite a largura (DataIn): ")
-        leia(largura)
-
-        escreva("Digite a altura (DataIn): ")
-        leia(altura)
-
-        escreva("Digite a base (DataIn): ")
-        leia(base)
-
-        somatorio = 4 * (largura + altura + base)
-
-        escreva("\nSoma total das arestas: ", somatorio, "\n")
-    }
-}
-```
-
-📄 Disponível em [`algoritmo_alto_nivel.por`](./algoritmo_alto_nivel.por).
-
----
-
-## 🏗️ Arquitetura
-
-O circuito segue o modelo clássico **Bloco de Controle + Bloco Operativo (datapath)**, com registradores de 8 bits:
-
-- **Bloco Operativo (datapath):** 8 registradores (`R0`–`R7`), multiplexadores 2:1 na entrada de cada registrador, dois barramentos de leitura (muxes 8:1) para as entradas da ULA, um somador/subtrator com flags (`N`, `Z`, `Cout`, `OV`), um *shifter* (SLL/SRL) e muxes de saída que definem `DataOut` e o barramento de realimentação `Data_Ula`.
-- **Bloco de Controle:** uma FSM (`Sreset`, `S0`...`S5`) que gera, a cada estado, a palavra de controle `C(27 downto 0)`, responsável por selecionar as entradas dos registradores, habilitar os *loads*, escolher os operandos da ULA (`OpA`/`OpB`), o modo soma/subtração, o sentido do *shift* e a fonte de `DataOut`.
-
-O projeto foi otimizado para usar **apenas os recursos necessários** à implementação do algoritmo do Tema 13 (menos registradores/estados ativos que o datapath genérico permite).
-
----
-
-## 📁 Estrutura do repositório
+- **Datapath** — 8× 8-bit registers, an ALU (add/sub), a shifter, and a pile of muxes routing everything.
+- **Control unit (FSM)** — an 8-state machine that outputs the control word for each clock cycle.
 
 ```
-ASIC_CD2/
-├── algoritmo_alto_nivel.por      # Algoritmo em alto nível (pseudocódigo)
-├── parte_de_controle.vhd         # Bloco de controle (FSM) em VHDL
-├── projeto_RT-bloco_operativo.zip
-│   ├── datapath.vhd              # Bloco operativo completo
-│   ├── mux4_1.vhd                # Multiplexador 4:1
-│   ├── reg8.vhd                  # Registrador de 8 bits
-│   ├── SC.vhd                    # Somador/subtrator com flags
-│   ├── Shiftl.vhd                # Shift lógico à esquerda
-│   ├── Shiftr.vhd                # Shift lógico à direita
-│   ├── soma_sub.vhd              # Unidade de soma/subtração
-│   └── ULA.vhd                   # Unidade lógico-aritmética
-├── TrabalhoPra_tico_CD2.pdf      # Enunciado oficial do trabalho
-├── LICENSE                       # Licença MIT
-└── README.md
+R7 <- DataIn                      -- height
+R6 <- DataIn                      -- width
+R5 <- DataIn, R4 <- R7 + R6       -- length is read WHILE R7+R6 is computed — same cycle, free speed-up
+R4 <- R4 + R5                     -- sum of the 3 dimensions
+R4 <- R4 sl                       -- ×2
+R4 <- R4 sl                       -- ×2 again → ×4 total
+DataOut <- R4
 ```
 
----
+That third line is the neat trick: two register loads fused into a single clock cycle because they don't depend on each other — shaves a full cycle off a naive implementation.
 
-## ⚙️ Como simular
+## 🗺️ Under the hood
 
-1. Abra o projeto no **Quartus** (Kit Altera **DE-2**).
-2. Adicione os arquivos `.vhd` do bloco operativo (dentro do `.zip`) e o `parte_de_controle.vhd` ao projeto.
-3. Compile o projeto e gere/edite o arquivo de forma de onda (`.vwf`) com os estímulos de `DataIn`, `clk` e `reset`.
-4. Execute a simulação e valide a sequência de estados da FSM e o resultado apresentado em `DataOut`.
+Straight from Quartus' RTL Viewer — the synthesized datapath and the FSM it's built from:
 
----
+<p align="center">
+  <img src="img/rtl_viewer.jpg" width="90%" alt="RTL viewer - datapath schematic" />
+</p>
 
-## ✅ Itens entregues
+<p align="center">
+  <img src="img/state_diagram.jpg" width="70%" alt="FSM state diagram" />
+</p>
 
-- [x] Algoritmo em alto nível
-- [x] Alocação dos registradores
-- [] Algoritmo em termos de registradores
-- [] Diagrama de estados com as operações de transferência
-- [] Implementação em VHDL (bloco de controle + bloco operativo)
-- [] Validação por simulação (`.vwf`)
-- [] Relatório com diagramas, código e telas de simulação
+## 📸 It actually works
 
----
+Test vector: `height=2, width=3, length=4` → expected `4×(2+3+4) = 36`
 
+![simulation waveform](img/simulacao_resultado.png)
 
+| step | value |
+|---|---|
+| R7 / R6 / R5 loaded | 2 / 3 / 4 |
+| R4 ← R7+R6 | 5 |
+| R4 ← R4+R5 | 9 |
+| R4 ← R4 sl | 18 |
+| R4 ← R4 sl | **36** |
+| `DataOut` | **36** ✅ |
 
-## 📜 Licença
+## 📁 What's in here
 
-Distribuído sob a licença **MIT**. Veja [`LICENSE`](./LICENSE) para mais detalhes.
+```
+4x-the-edges/
+├── src/       VHDL source (FSM + datapath)
+├── sim/       Quartus waveform (.vwf) simulation
+├── quartus/   Quartus II project + DE2 pin assignments
+├── docs/      algorithm write-ups (high-level → register-transfer level)
+└── img/       screenshots (RTL viewer, state diagram, simulation)
+```
 
-Copyright (c) 2026 Lúcio Vagner Carvalho Souza
+## ▶️ Run it yourself
+
+1. Open `quartus/ASIC_C2.qpf` in Quartus II (13.0 SP1+, Cyclone II family) — that's just the internal project name, don't worry about it.
+2. Make sure every file in `src/` is added to the project.
+3. `Processing > Start Compilation`.
+4. Open `sim/Waveform.vwf` → `Simulation > Run Functional Simulation`.
+5. Flash it to a DE2 board and flip some switches. 🎛️
+
+## 🛠️ Built with
+
+VHDL · Quartus II · a lot of waveform-staring
+
+## 📄 License
+
+MIT — do whatever you want with it.
