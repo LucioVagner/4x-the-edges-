@@ -13,7 +13,7 @@ begin
 
 P1: process(clk,reset,D)
 begin
-    if reset = '1' then
+    if reset = '0' then
 	    q <= (others => '0');
 	 elsif clk'event and clk = '1' then
 	    if carga = '1' then

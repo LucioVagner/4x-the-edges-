@@ -5,7 +5,8 @@ Entity FSM is
 Port(DataIn : in std_logic_vector(7 downto 0);
 	  clk,reset : in std_logic;
 	  N,Z,cout,ov : out std_logic;
-	  DataOut,R0,R1,R2,R3,R4,R5,R6,R7 : out std_logic_vector(7 downto 0)
+	  DataOut,R0,R1,R2,R3,R4,R5,R6,R7 : out std_logic_vector(7 downto 0);
+	  HEX0,HEX1,HEX2 : out std_logic_vector(6 downto 0)
 	  );
 end FSM;
 
@@ -17,6 +18,20 @@ Port(DataIn : in std_logic_vector(7 downto 0);
 	  clk,reset : in std_logic;
 	  N,Z,cout,ov : out std_logic;
 	  DataOut,R0,R1,R2,R3,R4,R5,R6,R7 : out std_logic_vector(7 downto 0)
+	  );
+end component;
+
+component bin2bcd is
+Port(bin      : in  std_logic_vector(7 downto 0);
+     centena  : out std_logic_vector(3 downto 0);
+	  dezena   : out std_logic_vector(3 downto 0);
+	  unidade  : out std_logic_vector(3 downto 0)
+	  );
+end component;
+
+component bcd7seg is
+Port(bcd : in  std_logic_vector(3 downto 0);
+     hex : out std_logic_vector(6 downto 0)
 	  );
 end component;
 
@@ -38,11 +53,17 @@ signal estado_atual, prox_estado : t_state;
 signal C : std_logic_vector(27 downto 0);
 
 
+signal DataOut_i : std_logic_vector(7 downto 0);
+
+
+signal bcd_centena, bcd_dezena, bcd_unidade : std_logic_vector(3 downto 0);
+
+
 begin
 
 P1: process(clk,reset)
 begin
-   if reset = '1' then
+   if reset = '0' then
 	   estado_atual <= S0;
 		
 	elsif clk'event and clk = '1' then
@@ -53,8 +74,8 @@ end process;
 P2: process(estado_atual,reset)
 begin
   case estado_atual is
-      when S0 => --parado esperando sair do reset, ninguem escuta nada ainda
-	       if reset = '1' then
+      when S0 => 
+	       if reset = '0' then
 			   prox_estado <= S0;
 			else
 			   prox_estado <= S1;
@@ -69,7 +90,7 @@ begin
 			 C(26) <= '0'; -- 0- Soma/Sub  1-Shifter
 			 C(27) <= '0'; -- 0- DataUla  1-OpA
 
-		when S1 => --R7 escutando o DataIn
+		when S1 => 
 		     C(7 downto 0)  <= "00000000";--Mux2:1 0-DataIn  1-Data_Ula
 			  C(15 downto 8) <= "10000000";--load R7
 			  C(18 downto 16) <= "000"; -- OpA
@@ -81,7 +102,7 @@ begin
 			  C(27) <= '0'; -- 0- DataUla  1-OpA
 			  prox_estado <= S2;
 
-		when S2 => --R6 escutando o DataIn
+		when S2 => 
 		     C(7 downto 0)  <= "00000000";--Mux2:1 0-DataIn  1-Data_Ula
 			  C(15 downto 8) <= "01000000";--load R6
 			  C(18 downto 16) <= "000"; -- OpA
@@ -93,8 +114,7 @@ begin
 			  C(27) <= '0'; -- 0- DataUla  1-OpA
 			  prox_estado <= S3;
 
-		when S3 => --aqui e a parte otimizada: R5 escutando o DataIn e, no mesmo
-		           --ciclo, R4 escutando o ula_out (R7+R6) -- os dois ao mesmo tempo
+		when S3 => 
 		     C(7 downto 0)  <= "00010000";--Mux2:1 R4=1(Data_Ula) R5=0(DataIn)
 			  C(15 downto 8) <= "00110000";--load R5 e R4
 			  C(18 downto 16) <= "111"; -- OpA=R7
@@ -106,7 +126,7 @@ begin
 			  C(27) <= '0'; -- 0- DataUla  1-OpA
 			  prox_estado <= S4;
 
-		when S4 => --R4 escutando o ula_out de novo, agora R4+R5
+		when S4 =>
 		     C(7 downto 0)  <= "00010000";--Mux2:1 R4=1(Data_Ula)
 			  C(15 downto 8) <= "00010000";--load R4
 			  C(18 downto 16) <= "100"; -- OpA=R4
@@ -118,7 +138,7 @@ begin
 			  C(27) <= '0'; -- 0- DataUla  1-OpA
 			  prox_estado <= S5;
 
-		when S5 => --R4 escutando o ula_out, primeiro shift left
+		when S5 => 
 		     C(7 downto 0)  <= "00010000";--Mux2:1 R4=1(Data_Ula)
 			  C(15 downto 8) <= "00010000";--load R4
 			  C(18 downto 16) <= "000"; -- OpA
@@ -130,7 +150,7 @@ begin
 			  C(27) <= '0'; -- 0- DataUla  1-OpA
 			  prox_estado <= S6;
 
-		when S6 => --R4 escutando o ula_out, segundo shift left (equivale a *4)
+		when S6 => 
 		     C(7 downto 0)  <= "00010000";--Mux2:1 R4=1(Data_Ula)
 			  C(15 downto 8) <= "00010000";--load R4
 			  C(18 downto 16) <= "000"; -- OpA
@@ -166,7 +186,7 @@ DP: datapath port map(DataIn,
 							 Z,
 							 cout,
 							 ov,
-							 DataOut,
+							 DataOut_i,
 							 R0,
 							 R1,
 							 R2,
@@ -175,5 +195,14 @@ DP: datapath port map(DataIn,
 							 R5,
 							 R6,
 							 R7);
+
+DataOut <= DataOut_i;
+
+
+CONV: bin2bcd port map(DataOut_i, bcd_centena, bcd_dezena, bcd_unidade);
+
+D2: bcd7seg port map(bcd_centena, HEX2);
+D1: bcd7seg port map(bcd_dezena,  HEX1);
+D0: bcd7seg port map(bcd_unidade, HEX0);
 
 end arq;
